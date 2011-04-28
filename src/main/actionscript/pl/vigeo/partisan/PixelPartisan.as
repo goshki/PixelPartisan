@@ -32,7 +32,9 @@ package pl.vigeo.partisan {
         
         protected var fpsCounter:TextField;
         
-        protected var lastFrameTime:int;
+        protected var lastFpsCheckTime:int;
+        protected var fpsCheckInterval:int = 500;
+        protected var frames:int;
         
         public function PixelPartisan() {
             addEventListener( Event.ENTER_FRAME, initialize );
@@ -52,7 +54,7 @@ package pl.vigeo.partisan {
         protected function configureStage():void {
             stage.scaleMode = StageScaleMode.NO_SCALE;
             stage.align = StageAlign.TOP_LEFT;
-            stage.frameRate = 60;
+            stage.frameRate = 100;
         }
         
         protected function configureEventListeners():void {
@@ -82,8 +84,14 @@ package pl.vigeo.partisan {
         
         private function updateFps():void {
             var now:int = getTimer();
-            fpsCounter.text = "FPS: " + int( 1 / ( now - lastFrameTime ) * 1000.0 );
-            lastFrameTime = now;
+            frames++;
+            if ( now < lastFpsCheckTime + fpsCheckInterval ) {
+                return;
+            }
+            var fps:int = frames / ( now - lastFpsCheckTime ) * 1000.0;
+            fpsCounter.text = "FPS: " + fps;
+            lastFpsCheckTime = now;
+            frames = 0;
         }
         
         private function updateUiPositions():void {
