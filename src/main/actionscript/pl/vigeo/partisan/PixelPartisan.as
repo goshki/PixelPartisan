@@ -25,8 +25,12 @@ package pl.vigeo.partisan {
         
         protected var snapToPixels:Boolean = true;
         
-        protected var zoom:int = 1;
+        protected var zoomStatus:TextField;
+        
+        protected var zoomIndex:int;
         protected var zoomValues:Array = [ 1, 2, 3, 4, 5, 6, 7, 8 ];
+        
+        protected var paintingStatus:TextField;
         
         protected var painting:Boolean;
         
@@ -48,6 +52,8 @@ package pl.vigeo.partisan {
             configureStage();
             configureEventListeners();
             addFpsCounter();
+            addPaintingStatus();
+            addZoomStatus();
             addEventListener( Event.ENTER_FRAME, update );
         }
         
@@ -94,6 +100,22 @@ package pl.vigeo.partisan {
             frames = 0;
         }
         
+        private function updatePaintingStatus():void {
+            paintingStatus.text = "Painting: " + ( painting ? "ON" : "OFF" );
+        }
+        
+        protected function addPaintingStatus():void {
+            paintingStatus = new TextField();
+			paintingStatus.width = 150;
+			paintingStatus.x = 0;
+			paintingStatus.height = 20;
+			paintingStatus.selectable = false;
+			paintingStatus.defaultTextFormat = new TextFormat( "Verdana", 11, 0x000000, true, null, null, null, null, "left", 2,
+			    null, null, 4 );
+			paintingStatus.text = "Painting: OFF";
+			addChild( paintingStatus );
+        }
+        
         private function updateUiPositions():void {
             fpsCounter.x = canvasWidth - fpsCounter.width;
         }
@@ -110,9 +132,38 @@ package pl.vigeo.partisan {
         protected function applyBrush():void {
         }
         
+        protected function addZoomStatus():void {
+            zoomStatus = new TextField();
+			zoomStatus.width = 150;
+			zoomStatus.x = 0;
+			zoomStatus.y = 16;
+			zoomStatus.height = 20;
+			zoomStatus.selectable = false;
+			zoomStatus.defaultTextFormat = new TextFormat( "Verdana", 11, 0x000000, true, null, null, null, null, "left", 2,
+			    null, null, 4 );
+			zoomStatus.text = "Zoom: x1";
+			addChild( zoomStatus );
+        }
+        
+        private function updateZoomStatus():void {
+            zoomIndex = Math.min( Math.max( zoomIndex, 0 ), zoomValues.length - 1 );
+            zoomStatus.text = "Zoom: x" + zoomValues[zoomIndex];
+        }
+        
+        private function zoomIn():void {
+            zoomIndex++;
+            updateZoomStatus();
+        }
+        
+        private function zoomOut():void {
+            zoomIndex--;
+            updateZoomStatus();
+        }
+        
         protected function onMouseMove( event:MouseEvent = null ):void {
             if ( ( event != null ) && event.buttonDown ) {
                 painting = true;
+                updatePaintingStatus();
             }
         }
         
@@ -123,9 +174,20 @@ package pl.vigeo.partisan {
         
         protected function onMouseUp( event:MouseEvent ):void {
             painting = false;
+            updatePaintingStatus();
         }
         
         protected function onKeyUp( event:KeyboardEvent ):void {
+            var keyCode:int = event.keyCode;
+            // http://www.webonweboff.com/tips/js/event_key_codes.aspx
+			switch ( keyCode ) {
+			    case 65: // A
+			        zoomIn();
+			        break;
+			    case 83: // S
+			        zoomOut();
+			        break;
+			}
         }
         
         protected function onKeyDown( event:KeyboardEvent ):void {
