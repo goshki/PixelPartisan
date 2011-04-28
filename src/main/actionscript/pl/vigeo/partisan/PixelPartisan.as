@@ -20,6 +20,12 @@ package pl.vigeo.partisan {
         protected var canvasWidth:int;
         protected var canvasHeight:int;
         
+        private var canvas:Bitmap;
+        
+        private var brush:Bitmap;
+        private var brushMatrix:Matrix;
+        private var brushSize:int = 10;
+        
         protected var backgroundColor:uint = 0xFFFFFFFF;
         protected var brushColor:uint = 0xFF000000;
         
@@ -51,6 +57,7 @@ package pl.vigeo.partisan {
             removeEventListener( Event.ENTER_FRAME, initialize );
             configureStage();
             configureEventListeners();
+            configureBrush();
             addFpsCounter();
             addPaintingStatus();
             addZoomStatus();
@@ -61,6 +68,7 @@ package pl.vigeo.partisan {
             stage.scaleMode = StageScaleMode.NO_SCALE;
             stage.align = StageAlign.TOP_LEFT;
             stage.frameRate = 100;
+            resetCanvas( false );
         }
         
         protected function configureEventListeners():void {
@@ -76,16 +84,36 @@ package pl.vigeo.partisan {
             stage.addEventListener( Event.RESIZE, onResize );
         }
         
+        private function configureBrush():void {
+            resetBrush();
+            brushMatrix = new Matrix();
+        }
+        
+        private function resetBrush():void {
+            var oldBrush:Bitmap = brush;
+            createBrush();
+            addChild( brush );
+            if ( oldBrush != null ) {
+                swapChildren( oldBrush, brush );
+                oldBrush.bitmapData.dispose();
+                removeChild( oldBrush );
+            }
+        }
+        
+        private function createBrush():void {
+            brush = new Bitmap( new BitmapData( brushSize, brushSize, true, brushColor ), "never", true );
+        }
+        
         protected function addFpsCounter():void {
             fpsCounter = new TextField();
-			fpsCounter.width = 80;
-			fpsCounter.x = canvasWidth - fpsCounter.width;
-			fpsCounter.height = 20;
-			fpsCounter.selectable = false;
-			fpsCounter.defaultTextFormat = new TextFormat( "Verdana", 11, 0x000000, true, null, null, null, null, "right", null,
-			    2, null, 4 );
-			fpsCounter.text = "FPS: 0";
-			addChild( fpsCounter );
+            fpsCounter.width = 80;
+            fpsCounter.x = canvasWidth - fpsCounter.width;
+            fpsCounter.height = 20;
+            fpsCounter.selectable = false;
+            fpsCounter.defaultTextFormat = new TextFormat( "Verdana", 11, 0x000000, true, null, null, null, null, "right", null,
+                2, null, 4 );
+            fpsCounter.text = "FPS: 0";
+            addChild( fpsCounter );
         }
         
         private function updateFps():void {
@@ -106,14 +134,14 @@ package pl.vigeo.partisan {
         
         protected function addPaintingStatus():void {
             paintingStatus = new TextField();
-			paintingStatus.width = 150;
-			paintingStatus.x = 0;
-			paintingStatus.height = 20;
-			paintingStatus.selectable = false;
-			paintingStatus.defaultTextFormat = new TextFormat( "Verdana", 11, 0x000000, true, null, null, null, null, "left", 2,
-			    null, null, 4 );
-			paintingStatus.text = "Painting: OFF";
-			addChild( paintingStatus );
+            paintingStatus.width = 150;
+            paintingStatus.x = 0;
+            paintingStatus.height = 20;
+            paintingStatus.selectable = false;
+            paintingStatus.defaultTextFormat = new TextFormat( "Verdana", 11, 0x000000, true, null, null, null, null, "left", 2,
+                null, null, 4 );
+            paintingStatus.text = "Painting: OFF";
+            addChild( paintingStatus );
         }
         
         private function updateUiPositions():void {
@@ -124,9 +152,24 @@ package pl.vigeo.partisan {
             updateFps();
         }
         
-        protected function resizeCanvas( width:int, height:int, crop:Boolean = false ):void {
+        protected function resetCanvas( resetUi:Boolean = true, copyCanvas:Boolean = true, crop:Boolean = false ):void {
+            canvasWidth = stage.stageWidth;
+            canvasHeight = stage.stageHeight;
             //trace( "Resizing canvas to: " + width + "x" + height + " " + ( crop ? "cropped" : "no crop" ) );
-            updateUiPositions();
+            var oldCanvas:Bitmap = canvas;
+            canvas = new Bitmap( new BitmapData( canvasWidth, canvasHeight, true, backgroundColor ) );
+            addChild( canvas );
+            if ( oldCanvas != null ) {
+                if ( copyCanvas ) {
+                    canvas.bitmapData.draw( oldCanvas );
+                }
+                swapChildren( oldCanvas, canvas );
+                oldCanvas.bitmapData.dispose();
+                removeChild( oldCanvas );
+            }
+            if ( resetUi ) {
+                updateUiPositions();
+            }
         }
         
         protected function applyBrush():void {
@@ -134,15 +177,15 @@ package pl.vigeo.partisan {
         
         protected function addZoomStatus():void {
             zoomStatus = new TextField();
-			zoomStatus.width = 150;
-			zoomStatus.x = 0;
-			zoomStatus.y = 16;
-			zoomStatus.height = 20;
-			zoomStatus.selectable = false;
-			zoomStatus.defaultTextFormat = new TextFormat( "Verdana", 11, 0x000000, true, null, null, null, null, "left", 2,
-			    null, null, 4 );
-			zoomStatus.text = "Zoom: x1";
-			addChild( zoomStatus );
+            zoomStatus.width = 150;
+            zoomStatus.x = 0;
+            zoomStatus.y = 16;
+            zoomStatus.height = 20;
+            zoomStatus.selectable = false;
+            zoomStatus.defaultTextFormat = new TextFormat( "Verdana", 11, 0x000000, true, null, null, null, null, "left", 2,
+                null, null, 4 );
+            zoomStatus.text = "Zoom: x1";
+            addChild( zoomStatus );
         }
         
         private function updateZoomStatus():void {
@@ -162,9 +205,20 @@ package pl.vigeo.partisan {
         
         protected function onMouseMove( event:MouseEvent = null ):void {
             if ( ( event != null ) && event.buttonDown ) {
-                painting = true;
-                updatePaintingStatus();
+                if ( !painting ) {
+                    painting = true;
+                    updatePaintingStatus();
+                }
             }
+            if ( !painting ) {
+                return;
+            }
+            var canvasBitmapData:BitmapData = canvas.bitmapData;
+            canvasBitmapData.lock();
+            brushMatrix.identity();
+            brushMatrix.translate( mouseX - brushSize / 2, mouseY - brushSize / 2 );
+            canvasBitmapData.draw( brush.bitmapData, brushMatrix );
+            canvasBitmapData.unlock();
         }
         
 
@@ -180,14 +234,17 @@ package pl.vigeo.partisan {
         protected function onKeyUp( event:KeyboardEvent ):void {
             var keyCode:int = event.keyCode;
             // http://www.webonweboff.com/tips/js/event_key_codes.aspx
-			switch ( keyCode ) {
-			    case 65: // A
-			        zoomIn();
-			        break;
-			    case 83: // S
-			        zoomOut();
-			        break;
-			}
+            switch ( keyCode ) {
+                case 65: // A
+                    zoomIn();
+                    break;
+                case 83: // S
+                    zoomOut();
+                    break;
+                case 69: // E
+                    resetCanvas( false, false );
+                    break;
+            }
         }
         
         protected function onKeyDown( event:KeyboardEvent ):void {
@@ -209,9 +266,7 @@ package pl.vigeo.partisan {
         }
         
         protected function onResize( event:Event = null ):void {
-            canvasWidth = stage.stageWidth;
-            canvasHeight = stage.stageHeight;
-            resizeCanvas( canvasWidth, canvasHeight );
+            resetCanvas();
         }
     }
 }
