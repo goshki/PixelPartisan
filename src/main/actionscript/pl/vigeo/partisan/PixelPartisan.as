@@ -17,24 +17,29 @@ package pl.vigeo.partisan {
     import flash.utils.getTimer;
     
     public class PixelPartisan extends Sprite {
-        protected var canvasWidth:int;
-        protected var canvasHeight:int;
+        private var drawingArea:Sprite;
+        
+        private var viewportWidth:int;
+        private var viewportHeight:int;
+            
+        private var canvasContainer:Sprite;
+        
+        private var canvasWidth:int = 32;
+        private var canvasHeight:int = 32;
         
         private var canvas:Bitmap;
         
         private var brush:Bitmap;
         private var brushMatrix:Matrix;
-        private var brushSize:int = 10;
+        private var brushSize:int = 1;
         
-        protected var backgroundColor:uint = 0xFFFFFFFF;
+        protected var backgroundColor:uint = 0xFFDDDDDD;
         protected var brushColor:uint = 0xFF000000;
-        
-        protected var snapToPixels:Boolean = true;
         
         protected var zoomStatus:TextField;
         
         protected var zoomIndex:int;
-        protected var zoomValues:Array = [ 1, 2, 3, 4, 5, 6, 7, 8 ];
+        protected var zoomValues:Array = [ 1, 2, 3, 4, 5, 6, 7, 8, 10, 11, 12, 13, 14, 16, 16 ];
         
         protected var paintingStatus:TextField;
         
@@ -56,6 +61,7 @@ package pl.vigeo.partisan {
             }
             removeEventListener( Event.ENTER_FRAME, initialize );
             configureStage();
+            configureViewport();
             configureEventListeners();
             configureBrush();
             addFpsCounter();
@@ -68,7 +74,15 @@ package pl.vigeo.partisan {
             stage.scaleMode = StageScaleMode.NO_SCALE;
             stage.align = StageAlign.TOP_LEFT;
             stage.frameRate = 100;
-            resetCanvas( false );
+        }
+        
+        protected function configureViewport():void {
+            canvasContainer = new Sprite();
+            addChild( canvasContainer );
+            drawingArea = new Sprite();
+            addChild( drawingArea );
+            resetViewport( false );
+            updateZoom( false );
         }
         
         protected function configureEventListeners():void {
@@ -92,12 +106,12 @@ package pl.vigeo.partisan {
         private function resetBrush():void {
             var oldBrush:Bitmap = brush;
             createBrush();
-            addChild( brush );
+            /*addChild( brush );
             if ( oldBrush != null ) {
                 swapChildren( oldBrush, brush );
                 oldBrush.bitmapData.dispose();
                 removeChild( oldBrush );
-            }
+            }*/
         }
         
         private function createBrush():void {
@@ -145,31 +159,34 @@ package pl.vigeo.partisan {
         }
         
         private function updateUiPositions():void {
-            fpsCounter.x = canvasWidth - fpsCounter.width;
+            fpsCounter.x = viewportWidth - fpsCounter.width;
         }
         
         protected function update( event:Event ):void {
             updateFps();
         }
         
-        protected function resetCanvas( resetUi:Boolean = true, copyCanvas:Boolean = true, crop:Boolean = false ):void {
-            canvasWidth = stage.stageWidth;
-            canvasHeight = stage.stageHeight;
-            //trace( "Resizing canvas to: " + width + "x" + height + " " + ( crop ? "cropped" : "no crop" ) );
+        protected function resetCanvas( copyCanvas:Boolean = true, crop:Boolean = false ):void {
             var oldCanvas:Bitmap = canvas;
             canvas = new Bitmap( new BitmapData( canvasWidth, canvasHeight, true, backgroundColor ) );
-            addChild( canvas );
+            canvasContainer.addChild( canvas );
             if ( oldCanvas != null ) {
                 if ( copyCanvas ) {
                     canvas.bitmapData.draw( oldCanvas );
                 }
-                swapChildren( oldCanvas, canvas );
+                canvasContainer.swapChildren( oldCanvas, canvas );
                 oldCanvas.bitmapData.dispose();
-                removeChild( oldCanvas );
+                canvasContainer.removeChild( oldCanvas );
             }
+        }
+        
+        private function resetViewport( resetUi:Boolean = true ):void {
+            viewportWidth = stage.stageWidth;
+            viewportHeight = stage.stageHeight;
             if ( resetUi ) {
                 updateUiPositions();
             }
+            resetCanvas();
         }
         
         protected function applyBrush():void {
@@ -189,18 +206,30 @@ package pl.vigeo.partisan {
         }
         
         private function updateZoomStatus():void {
-            zoomIndex = Math.min( Math.max( zoomIndex, 0 ), zoomValues.length - 1 );
             zoomStatus.text = "Zoom: x" + zoomValues[zoomIndex];
+        }
+        
+        private function updateZoom( resetUi:Boolean = true ):void {
+            zoomIndex = Math.min( Math.max( zoomIndex, 0 ), zoomValues.length - 1 );
+            var zoom:int = zoomValues[zoomIndex];
+            canvasContainer.scaleX = zoom;
+            canvasContainer.scaleY = zoom;
+            var centerPoint:Point = new Point( viewportWidth / 2, viewportHeight / 2 );
+            canvasContainer.x = Math.round( centerPoint.x - canvasContainer.width / 2 );
+            canvasContainer.y = Math.round( centerPoint.y - canvasContainer.height / 2 );
+            if ( resetUi ) {
+                updateZoomStatus();
+            }
         }
         
         private function zoomIn():void {
             zoomIndex++;
-            updateZoomStatus();
+            updateZoom();
         }
         
         private function zoomOut():void {
             zoomIndex--;
-            updateZoomStatus();
+            updateZoom();
         }
         
         protected function onMouseMove( event:MouseEvent = null ):void {
@@ -216,9 +245,13 @@ package pl.vigeo.partisan {
             var canvasBitmapData:BitmapData = canvas.bitmapData;
             canvasBitmapData.lock();
             brushMatrix.identity();
-            brushMatrix.translate( mouseX - brushSize / 2, mouseY - brushSize / 2 );
+            brushMatrix.translate( Math.round( canvasContainer.mouseX - Math.floor( brushSize / 2 ) ),
+                Math.round( canvasContainer.mouseY - Math.floor( brushSize / 2 ) ) );
             canvasBitmapData.draw( brush.bitmapData, brushMatrix );
             canvasBitmapData.unlock();
+            if ( event != null ) {
+                event.updateAfterEvent();
+            }
         }
         
 
@@ -266,7 +299,7 @@ package pl.vigeo.partisan {
         }
         
         protected function onResize( event:Event = null ):void {
-            resetCanvas();
+            resetViewport();
         }
     }
 }
