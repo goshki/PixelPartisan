@@ -352,15 +352,15 @@ package pl.vigeo.partisan {
         }
         
         protected function onMouseOver( event:MouseEvent ):void {
-            Mouse.hide();
+            //Mouse.hide();
         }
         
         protected function onFocus( event:Event = null ):void {
-            Mouse.hide();
+            //Mouse.hide();
         }
         
         protected function onFocusLost( event:Event = null ):void {
-            Mouse.show();
+            //Mouse.show();
         }
         
         protected function onResize( event:Event = null ):void {
