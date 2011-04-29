@@ -365,6 +365,7 @@ package pl.vigeo.partisan {
         
         protected function onResize( event:Event = null ):void {
             resetViewport();
+            updateZoom();
         }
     }
 }
