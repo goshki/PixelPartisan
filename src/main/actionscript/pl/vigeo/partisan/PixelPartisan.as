@@ -131,7 +131,7 @@ package pl.vigeo.partisan {
         protected function addFpsCounter():void {
             fpsCounter = new TextField();
             fpsCounter.width = 80;
-            fpsCounter.x = canvasWidth - fpsCounter.width;
+            fpsCounter.x = viewportWidth - fpsCounter.width;
             fpsCounter.height = 20;
             fpsCounter.selectable = false;
             fpsCounter.defaultTextFormat = new TextFormat( "Verdana", 11, 0x000000, true, null, null, null, null, "right", null,
