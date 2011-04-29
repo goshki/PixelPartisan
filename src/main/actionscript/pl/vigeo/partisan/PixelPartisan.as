@@ -245,8 +245,8 @@ package pl.vigeo.partisan {
             var canvasBitmapData:BitmapData = canvas.bitmapData;
             canvasBitmapData.lock();
             brushMatrix.identity();
-            brushMatrix.translate( Math.round( canvasContainer.mouseX - Math.floor( brushSize / 2 ) ),
-                Math.round( canvasContainer.mouseY - Math.floor( brushSize / 2 ) ) );
+            brushMatrix.translate( Math.floor( canvasContainer.mouseX - Math.floor( brushSize / 2 ) ),
+                Math.floor( canvasContainer.mouseY - Math.floor( brushSize / 2 ) ) );
             canvasBitmapData.draw( brush.bitmapData, brushMatrix );
             canvasBitmapData.unlock();
             if ( event != null ) {
