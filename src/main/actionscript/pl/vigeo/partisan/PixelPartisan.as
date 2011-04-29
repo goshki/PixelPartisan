@@ -33,13 +33,20 @@ package pl.vigeo.partisan {
         private var brushMatrix:Matrix;
         private var brushSize:int = 1;
         
+        private var brushAlphaStatus:TextField;
+        private var brushAlpha:Number = 1.0;
+        private var brushColorTransform:ColorTransform;
+        
+        private var lastBrushX:int = -1;
+        private var lastBrushY:int = -1;
+        
         protected var backgroundColor:uint = 0xFFDDDDDD;
         protected var brushColor:uint = 0xFF000000;
         
         protected var zoomStatus:TextField;
         
         protected var zoomIndex:int;
-        protected var zoomValues:Array = [ 1, 2, 3, 4, 5, 6, 7, 8, 10, 11, 12, 13, 14, 16, 16 ];
+        protected var zoomValues:Array = [ 1, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30, 32 ];
         
         protected var paintingStatus:TextField;
         
@@ -67,6 +74,7 @@ package pl.vigeo.partisan {
             addFpsCounter();
             addPaintingStatus();
             addZoomStatus();
+            addBrushAlphaStatus();
             addEventListener( Event.ENTER_FRAME, update );
         }
         
@@ -116,6 +124,8 @@ package pl.vigeo.partisan {
         
         private function createBrush():void {
             brush = new Bitmap( new BitmapData( brushSize, brushSize, true, brushColor ), "never", true );
+            brushColorTransform = new ColorTransform();
+            brushColorTransform.alphaMultiplier = brushAlpha;
         }
         
         protected function addFpsCounter():void {
@@ -190,6 +200,21 @@ package pl.vigeo.partisan {
         }
         
         protected function applyBrush():void {
+            var brushX:int = Math.floor( canvasContainer.mouseX - Math.floor( brushSize / 2 ) );
+            var brushY:int = Math.floor( canvasContainer.mouseY - Math.floor( brushSize / 2 ) );
+            if ( brushX < 0 || brushY < 0 || ( brushX == lastBrushX && brushY == lastBrushY ) ) {
+                // Don't apply brush when out of canvas area or when brush applied multiple times at the same position (when
+                // zoomed in)
+                return;
+            }
+            var canvasBitmapData:BitmapData = canvas.bitmapData;
+            canvasBitmapData.lock();
+            brushMatrix.identity();
+            brushMatrix.translate( brushX, brushY );
+            canvasBitmapData.draw( brush.bitmapData, brushMatrix, brushColorTransform );
+            canvasBitmapData.unlock();
+            lastBrushX = brushX;
+            lastBrushY = brushY;
         }
         
         protected function addZoomStatus():void {
@@ -232,6 +257,45 @@ package pl.vigeo.partisan {
             updateZoom();
         }
         
+        protected function addBrushAlphaStatus():void {
+            brushAlphaStatus = new TextField();
+            brushAlphaStatus.width = 150;
+            brushAlphaStatus.x = 0;
+            brushAlphaStatus.y = 32;
+            brushAlphaStatus.height = 20;
+            brushAlphaStatus.selectable = false;
+            brushAlphaStatus.defaultTextFormat = new TextFormat( "Verdana", 11, 0x000000, true, null, null, null, null, "left", 2,
+                null, null, 4 );
+            brushAlphaStatus.text = "Alpha: 1.0";
+            addChild( brushAlphaStatus );
+        }
+        
+        private function updateBrushAlphaStatus():void {
+            var brushAlphaText:String = "" + ( Math.round( brushAlpha * 10.0 ) / 10.0 );
+            if ( brushAlphaText.length == 1 ) {
+                brushAlphaText += ".0";
+            }
+            brushAlphaStatus.text = "Alpha: " + brushAlphaText;
+        }
+        
+        private function updateBrushAlpha( resetUi:Boolean = true ):void {
+            brushAlpha = Math.min( Math.max( brushAlpha, 0 ), 1 );
+            brushColorTransform.alphaMultiplier = brushAlpha;
+            if ( resetUi ) {
+                updateBrushAlphaStatus();
+            }
+        }
+        
+        private function increaseBrushAlpha():void {
+            brushAlpha += 0.1;
+            updateBrushAlpha();
+        }
+        
+        private function decreaseBrushAlpha():void {
+            brushAlpha -= 0.1;
+            updateBrushAlpha();
+        }
+        
         protected function onMouseMove( event:MouseEvent = null ):void {
             if ( ( event != null ) && event.buttonDown ) {
                 if ( !painting ) {
@@ -242,13 +306,7 @@ package pl.vigeo.partisan {
             if ( !painting ) {
                 return;
             }
-            var canvasBitmapData:BitmapData = canvas.bitmapData;
-            canvasBitmapData.lock();
-            brushMatrix.identity();
-            brushMatrix.translate( Math.floor( canvasContainer.mouseX - Math.floor( brushSize / 2 ) ),
-                Math.floor( canvasContainer.mouseY - Math.floor( brushSize / 2 ) ) );
-            canvasBitmapData.draw( brush.bitmapData, brushMatrix );
-            canvasBitmapData.unlock();
+            applyBrush();
             if ( event != null ) {
                 event.updateAfterEvent();
             }
@@ -261,6 +319,7 @@ package pl.vigeo.partisan {
         
         protected function onMouseUp( event:MouseEvent ):void {
             painting = false;
+            lastBrushX = lastBrushY = -1;
             updatePaintingStatus();
         }
         
@@ -273,6 +332,12 @@ package pl.vigeo.partisan {
                     break;
                 case 83: // S
                     zoomOut();
+                    break;
+                case 81: // Q
+                    increaseBrushAlpha();
+                    break;
+                case 87: // W
+                    decreaseBrushAlpha();
                     break;
                 case 69: // E
                     resetCanvas( false, false );
